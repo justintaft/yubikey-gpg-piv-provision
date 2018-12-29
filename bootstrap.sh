@@ -1,0 +1,222 @@
+#!/usr/bin/env bash
+
+#Install deps
+apt update
+apt install scdaemon gnupg2 pcscd pcsc-tools yubikey-manager
+
+# Asks user for input. 
+# VERIFIED_INPUT is set to input which used supplied.
+function get_and_verify_input() {
+
+    TMP_INPUT=""
+    TMP_INPUT_VERIFY="123 ${TMP_INPUT}"
+
+    while [ "$TMP_INPUT" != "$TMP_INPUT_VERIFY" ]; do
+
+	echo -n "Type in a $1 (input hidden): "
+        read -s TMP_INPUT
+        echo ""
+
+	echo -n "Retype $1 to verify (input hidden): " 
+        read -s TMP_INPUT_VERIFY
+        echo ""
+
+        if  [ "$TMP_INPUT" != "$TMP_INPUT_VERIFY" ]; then
+            echo "Input did not match."
+        fi
+        echo ""
+    done
+    export "$2=$TMP_INPUT_VERIFY"
+}
+
+
+get_and_verify_input "GPG Master Key Passphrase" "MASTER_PASSPHRASE"
+get_and_verify_input "GPG Subkey Key Passphrase" "SUBKEY_PASSPHRASE"
+get_and_verify_input "GPG Admin Pin"             "GPG_ADMIN_PIN"
+get_and_verify_input "GPG Subkey Key Passphrase" "GPG_USER_PIN"
+get_and_verify_input "Real Name" "REAL_NAME"
+get_and_verify_input "Email Address" "EMAIL"
+
+
+# Moves key to card
+# $1 is key index, $2 is GPG slot for smartcard
+# GPG Slot Values: 1 sign 
+#                  2 encrypt
+#                  3 authenticate
+function key_to_card()
+{
+  {
+    echo key "$1"
+    echo keytocard 
+    echo "$2"
+    #echo "y" #overwrite key if it exists
+    echo "$MASTER_PASSPHRASE"
+    echo "$GPG_ADMIN_PIN" # For some reason, it has to be entered twice sometimes...
+    echo "$GPG_ADMIN_PIN"
+    echo save
+  } | gpg2 --batch --expert --command-fd 0 --pinentry-mode loopback --edit-key "$KEY_ID"
+}
+
+function reset_opengp_yubikey() 
+{
+    echo "y" | ykman openpgp reset
+}
+
+
+#TODO
+function enable_touch_policy_for_all_actions() 
+{
+     echo "y" | ykman openpgp touch sig on --admin-pin "$GPG_ADMIN_PIN"
+     echo "y" | ykman openpgp touch enc on --admin-pin "$GPG_ADMIN_PIN"
+     echo "y" | ykman openpgp touch aut on --admin-pin "$GPG_ADMIN_PIN"
+
+}
+
+function change_user_pin() {
+  OUTPUT=`{
+    echo admin
+    echo passwd
+    echo 1
+    echo 123456
+    echo $GPG_USER_PIN
+    echo $GPG_USER_PIN 
+    echo q
+  } | gpg  --card-edit --command-fd 0 --pinentry-mode loopback 2>/dev/null`
+} 
+
+function change_admin_pin() {
+   OUTPUT=`{
+    echo admin
+    echo passwd
+    echo 3
+    echo 12345678
+    echo "$GPG_ADMIN_PIN"
+    echo "$GPG_ADMIN_PIN"
+    echo q
+  } | gpg --card-edit --command-fd 0 --pinentry-mode loopback 2>/dev/null`
+  echo $OUTPUT
+}
+
+
+#TODO ensure yubikey is plugged in 
+function check_for_yubikey() {
+PCSC_SCAN=''
+    until [ $(grep "Yubikey" "$PCSC_SCAN") -eq 0 ]; do
+        PCSC_SCAN=`timeout 1s pcsc_scan -r`
+    done
+
+}
+
+
+
+function generate_master_key() {
+OUTPUT=`gpg --batch --passphrase-fd 0 --command-fd=0 --pinentry-mode loopback --gen-key 2>&1  << EOF
+%echo Gen key
+Key-Type: RSA
+Key-Length: 4096
+Key-Usage: sign
+Name-Real: $REAL_NAME
+Name-Email: $EMAIL
+Expire-Date: 0
+Passphrase: $MASTER_PASSPHRASE
+%commit
+EOF`
+echo "$OUTPUT"
+}
+
+function generate_RSA_4096_sign_sub_key() {
+  {
+      echo addkey
+      echo 4     # RSA (sign only)
+      echo 4096  # key length
+      echo 0
+      echo "$MASTER_PASSPHRASE" # passphrase confirm
+      echo "save"
+  } | gpg2 --batch --expert  --command-fd 0 --pinentry-mode loopback --edit-key "$KEY_ID"
+}
+
+function generate_RSA_4096_encryption_sub_key() {
+  {
+      echo addkey
+      echo 6     # RSA (encrypt only)
+      echo 4096  # key length
+      echo 0
+      echo "$MASTER_PASSPHRASE" # passphrase confirm
+      echo "save"
+  } | gpg2 --batch --expert  --command-fd 0 --pinentry-mode loopback --edit-key "$KEY_ID"
+}
+
+
+function generate_RSA_4096_authentication_sub_key() {
+    {
+        echo addkey
+        echo 8     # RSA (Set Own Capabilities)
+        echo "s"   # disable signing
+        echo "e"   # disable encryption
+        echo "a"   # enable authentication
+        echo "q"   # quit capabilities
+        echo 4096  # key length
+        echo "0"   # does not expire
+        echo "$MASTER_PASSPHRASE" # password confirm
+        echo "save"
+    } | gpg2 --batch --expert --command-fd 0 --pinentry-mode loopback --edit-key "$KEY_ID"
+
+
+}
+
+
+echo "Resetting opengpg user and admin pin. No reset code will be set."
+reset_opengp_yubikey 2>/dev/null
+sleep 2
+
+echo "Setting user pin"
+change_user_pin 2>&1 >  /dev/null
+sleep 2
+
+echo "Setting admin pin"
+change_admin_pin 2>&1 > /dev/null
+
+
+echo "Generating RSA 4096 master key."
+MASTER_KEY_GEN_OUTPUT=$(generate_master_key)
+KEY_ID=$(echo -e "$MASTER_KEY_GEN_OUTPUT" | grep "marked as" | sed 's/ marked as .*$//g' | sed 's/gpg: key //g')
+
+echo "Generating RSA 4096 sign sub key."
+generate_RSA_4096_sign_sub_key 2> /dev/null
+
+echo "Generating RSA 4096 encryption sub key."
+generate_RSA_4096_encryption_sub_key  2> /dev/null
+
+echo "Generating RSA 4096 authentication sub key."
+generate_RSA_4096_authentication_sub_key 2> /dev/null
+
+
+echo "Exporitng public keys."
+gpg -a --export >  ~/public_keys
+
+echo "Exporting private keys."
+echo "$MASTER_PASSPHRASE" | gpg -a --batch --passphrase-fd 0 --export-secret-keys --pinentry-mode loopback > ~/all_private_keys
+
+echo "Exporting private subkeys."
+echo "$MASTER_PASSPHRASE" | gpg -a --batch --passphrase-fd 0 --export-secret-subkeys --pinentry-mode loopback > ~/all_sub_keys
+
+echo "Moving Subkey to YUBIKEY"
+key_to_card "1" "1"
+key_to_card "2" "2"
+key_to_card "3" "3"
+
+
+echo "Setting touch policy to be required for encryption signature and authentication operations"
+enable_touch_policy_for_all_actions
+sleep 2
+
+echo "Testing encryption and decryption"
+echo "Generating encrypted message to yourself..."
+echo "Hello world!" | gpg -a --encrypt --recipient "$EMAIL" > /tmp/message.enc
+echo "Decrypting message. After typing GPG User Pin, the yubikey should require a physical touch to complete decryption."
+gpg --decrypt /tmp/message.enc
+
+
+echo "Setting up ssh-agent to use gpg"
+killall ssh-agent
+gpg-connect-agent updatestartuptty /bye
