@@ -33,7 +33,7 @@ function get_and_verify_input() {
 get_and_verify_input "GPG Master Key Passphrase" "MASTER_PASSPHRASE"
 get_and_verify_input "GPG Subkey Key Passphrase" "SUBKEY_PASSPHRASE"
 get_and_verify_input "GPG Admin Pin"             "GPG_ADMIN_PIN"
-get_and_verify_input "GPG Subkey Key Passphrase" "GPG_USER_PIN"
+get_and_verify_input "GPG User Pin" "GPG_USER_PIN"
 get_and_verify_input "Real Name" "REAL_NAME"
 get_and_verify_input "Email Address" "EMAIL"
 
@@ -165,6 +165,17 @@ function generate_RSA_4096_authentication_sub_key() {
 }
 
 
+function set_key_prefs() 
+{
+  {
+    echo setpref SHA512 SHA384 SHA256 SHA224 AES256 AES192 AES ZLIB BZIP2 ZIP Uncompressed
+    echo y
+    echo "$MASTER_PASSPHRASE"
+    echo save
+  } | gpg2 --batch --expert --command-fd 0 --pinentry-mode loopback --edit-key "$KEY_ID"
+}
+
+
 echo "Resetting opengpg user and admin pin. No reset code will be set."
 reset_opengp_yubikey 2>/dev/null
 sleep 2
@@ -190,6 +201,8 @@ generate_RSA_4096_encryption_sub_key  2> /dev/null
 echo "Generating RSA 4096 authentication sub key."
 generate_RSA_4096_authentication_sub_key 2> /dev/null
 
+echo "Setting key preferences."
+set_key_prefs 2> /dev/null
 
 echo "Exporitng public keys."
 gpg -a --export >  ~/public_keys
