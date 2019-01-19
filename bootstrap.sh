@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 
+KEY_OUTPUT_DIR="/vagrant/output"
+
 #Install deps
-apt update
-apt install scdaemon gnupg2 pcscd pcsc-tools yubikey-manager
+sudo apt update -y
+sudo apt install scdaemon gnupg2 pcscd pcsc-tools yubikey-manager -y
 
 # Asks user for input. 
 # VERIFIED_INPUT is set to input which used supplied.
@@ -205,13 +207,13 @@ echo "Setting key preferences."
 set_key_prefs 2> /dev/null
 
 echo "Exporitng public keys."
-gpg -a --export >  ~/public_keys
+gpg -a --export >  "$KEY_OUTPUT_DIR/public_keys"
 
 echo "Exporting private keys."
-echo "$MASTER_PASSPHRASE" | gpg -a --batch --passphrase-fd 0 --export-secret-keys --pinentry-mode loopback > ~/all_private_keys
+echo "$MASTER_PASSPHRASE" | gpg -a --batch --passphrase-fd 0 --export-secret-keys --pinentry-mode loopback > "$KEY_OUTPUT_DIR/all_private_keys"
 
 echo "Exporting private subkeys."
-echo "$MASTER_PASSPHRASE" | gpg -a --batch --passphrase-fd 0 --export-secret-subkeys --pinentry-mode loopback > ~/all_sub_keys
+echo "$MASTER_PASSPHRASE" | gpg -a --batch --passphrase-fd 0 --export-secret-subkeys --pinentry-mode loopback > "$KEY_OUTPUT_DIR/all_sub_keys"
 
 echo "Moving Subkey to YUBIKEY"
 key_to_card "1" "1"
