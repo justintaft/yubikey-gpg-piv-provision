@@ -11,17 +11,17 @@ function gen_and_install_key() {
   KEY_TYPE=$3
 
   #Generate ECC Private Key
-  openssl ecparam -name "$CURVE_TYPE" -genkey -noout -out "piv-${CURVE_TYPE}-${KEY_TYPE}-key.pem"
+  openssl ecparam -name "$CURVE_TYPE" -genkey -noout -out "output/piv/piv-${CURVE_TYPE}-${KEY_TYPE}-key.pem"
   
   #import key 
-  cat "piv-${CURVE_TYPE}-${KEY_TYPE}-key.pem" | yubico-piv-tool -a import-key -s "$SLOT" --touch-policy always
+  cat "output/piv/piv-${CURVE_TYPE}-${KEY_TYPE}-key.pem" | yubico-piv-tool -a import-key -s "$SLOT" --touch-policy always
 
   #Create Certificate Certificate
-  openssl ec -in "piv-${CURVE_TYPE}-${KEY_TYPE}-key.pem" -pubout -out "piv-${CURVE_TYPE}-${KEY_TYPE}-pubkey.pem"
+  openssl ec -in "output/piv/piv-${CURVE_TYPE}-${KEY_TYPE}-key.pem" -pubout -out "output/piv/piv-${CURVE_TYPE}-${KEY_TYPE}-pubkey.pem"
 
   #Self-sign certificate
   echo "Touch yubikey to self sign certificate."
-  CERT=`echo "$PIN" | yubico-piv-tool -s"${SLOT}" -S'/CN='"$CERT_CN"'/OU='"$CERT_OU"'/O='"$CERT_O"'/' -averify -aselfsign -i "piv-${CURVE_TYPE}-${KEY_TYPE}-pubkey.pem" -P "123456"`
+  CERT=`echo "$PIN" | yubico-piv-tool -s"${SLOT}" -S'/CN='"$CERT_CN"'/OU='"$CERT_OU"'/O='"$CERT_O"'/' -averify -aselfsign -i "output/piv/piv-${CURVE_TYPE}-${KEY_TYPE}-pubkey.pem" -P "123456"`
 
   echo "Done"
 
