@@ -1,4 +1,4 @@
-# Yubikey Auto GPG Config
+# Yubikey GPG and PIV Provision
 
 Easily provision a new yubikey for PIV and GPG use.
 
