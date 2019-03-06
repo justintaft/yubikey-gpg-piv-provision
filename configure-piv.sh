@@ -34,7 +34,7 @@ function gen_and_install_key() {
 echo y | ykman piv reset
 
 
-#MacOS requires 256r1 for encryption key for some reason...
+#MacOS requires 256r1 for encryption key when using ECC for some reason...
 gen_and_install_key 9a secp256r1 authentication
 gen_and_install_key 9c secp256r1 signing
 gen_and_install_key 9d secp256r1 encryption

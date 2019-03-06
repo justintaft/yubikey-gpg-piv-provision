@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-KEY_OUTPUT_DIR="/vagrant/output"
+KEY_OUTPUT_DIR="/vagrant/output/gpg"
 
 #Install deps
 sudo apt update -y
