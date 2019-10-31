@@ -56,7 +56,9 @@ if echo "DECRYPTEDMSG" | grep "Hello world!"; then
 	exit
 fi
 
-log "IMPORTANT! Setup has complete. If you were asked for a PIN (not a passphrase), and had to touch the yuibkey to decrypt, setup was succesful. Otherwise, an error has occured. Re-insert yubikey and try again."
+log "Exported keys have been stored in $KEY_OUTPUT_DIR" 
+
+log "IMPORTANT! If you were asked for a PIN (not a passphrase), and had to touch the yuibkey to decrypt, setup was succesful. Otherwise, an error has occured. Re-insert yubikey and try again."
 
 
 
