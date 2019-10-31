@@ -17,7 +17,7 @@ sudo apt install scdaemon gnupg2 pcscd pcsc-tools yubikey-manager -y
 
 # Asks user for input. 
 # VERIFIED_INPUT is set to input which used supplied.
-function get_and_verify_input() {
+function get_and_verify_input_hidden() {
 
     TMP_INPUT=""
     TMP_INPUT_VERIFY="123 ${TMP_INPUT}"
@@ -30,6 +30,32 @@ function get_and_verify_input() {
 
 	echo -n "Retype $1 to verify (input hidden): " 
         read -s TMP_INPUT_VERIFY
+        echo ""
+
+        if  [ "$TMP_INPUT" != "$TMP_INPUT_VERIFY" ]; then
+            echo "Input did not match."
+        fi
+        echo ""
+    done
+    export "$2=$TMP_INPUT_VERIFY"
+}
+
+
+# Asks user for input. 
+# VERIFIED_INPUT is set to input which used supplied.
+function get_and_verify_input() {
+
+    TMP_INPUT=""
+    TMP_INPUT_VERIFY="123 ${TMP_INPUT}"
+
+    while [ "$TMP_INPUT" != "$TMP_INPUT_VERIFY" ]; do
+
+	echo -n "Type in a $1: "
+        read TMP_INPUT
+        echo ""
+
+	echo -n "Retype $1 to verify: " 
+        read TMP_INPUT_VERIFY
         echo ""
 
         if  [ "$TMP_INPUT" != "$TMP_INPUT_VERIFY" ]; then
@@ -61,15 +87,11 @@ log "Yubikey detected, contiuning setup."
 log "Killing gpg-agent."
 killall gpg-agent -9
 
-GNUPGHOME=`mktemp`
-log "Using $GNUPGHOME as temporary gpg directory."
 
-
-
-get_and_verify_input "GPG Master Key Passphrase" "MASTER_PASSPHRASE"
-get_and_verify_input "GPG Subkey Key Passphrase" "SUBKEY_PASSPHRASE"
-get_and_verify_input "GPG Admin Pin"             "GPG_ADMIN_PIN"
-get_and_verify_input "GPG User Pin" "GPG_USER_PIN"
+get_and_verify_input_hidden "GPG Master Key Passphrase" "MASTER_PASSPHRASE"
+get_and_verify_input_hidden "GPG Subkey Key Passphrase" "SUBKEY_PASSPHRASE"
+get_and_verify_input_hidden "GPG Admin Pin"             "GPG_ADMIN_PIN"
+get_and_verify_input_hidden "GPG User Pin" "GPG_USER_PIN"
 get_and_verify_input "Real Name" "REAL_NAME"
 get_and_verify_input "Email Address" "EMAIL"
 
@@ -91,6 +113,12 @@ function key_to_card()
     echo "$GPG_ADMIN_PIN"
     echo save
   } | gpg2 --batch --expert --command-fd 0 --pinentry-mode loopback --edit-key "$KEY_ID"
+
+  if [[ $? -ne 0 ]]; then 
+	  log "Setup has failed!"
+	  exit
+  fi
+
 }
 
 function reset_opengp_yubikey() 
@@ -118,6 +146,11 @@ function change_user_pin() {
     echo $GPG_USER_PIN 
     echo q
   } | gpg  --card-edit --command-fd 0 --pinentry-mode loopback 2>/dev/null`
+
+  if [[ $? -ne 0 ]]; then 
+	  log "Setup has failed!"
+	  exit
+  fi
 } 
 
 function change_admin_pin() {
@@ -130,7 +163,12 @@ function change_admin_pin() {
     echo "$GPG_ADMIN_PIN"
     echo q
   } | gpg --card-edit --command-fd 0 --pinentry-mode loopback 2>/dev/null`
-  echo $OUTPUT
+
+  if [[ $? -ne 0 ]]; then 
+	  log "Setup has failed!"
+	  exit
+  fi
+
 }
 
 
@@ -213,12 +251,12 @@ function set_key_prefs()
 
 
 log "Resetting opengpg user and admin pin. No reset code will be set."
-reset_opengp_yubikey 2>/dev/null
+reset_opengp_yubikey 
 sleep 2
 
 log "Setting user pin"
-change_user_pin 2>&1 >  /dev/null
+change_user_pin 
 sleep 2
 
 log "Setting admin pin"
-change_admin_pin 2>&1 > /dev/null
+change_admin_pin 

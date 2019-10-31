@@ -39,10 +39,26 @@ sleep 2
 
 log "Testing encryption and decryption"
 log "Generating encrypted message to yourself..."
-log "Hello world!" | gpg -a --encrypt --recipient "$EMAIL" > /tmp/message.enc
-gpg --decrypt /tmp/message.enc
+echo "Hello world!" | gpg -a --encrypt --recipient "$EMAIL" > /tmp/message.enc
 
-log "READ ME! Message attempt to be decrypted. If you weren't asked for a pin, setup has vail along the process. If you were asked for pin and message decrypted successfully, setup is complete."
+
+log "Yubikey should be flashing. Touch yubikey to finish decrypting message."
+
+DECRYPTEDMSG=`gpg --decrypt /tmp/message.enc`
+
+if [[ $? -ne 0 ]]; then
+	log "Failed to decrypt test message. Setup is not successful."
+	exit
+fi
+
+if echo "DECRYPTEDMSG" | grep "Hello world!"; then
+	log "Failed to decrypt test message. Setup is not successful."
+	exit
+fi
+
+log "IMPORTANT! Setup has complete. If you were asked for a PIN (not a passphrase), and had to touch the yuibkey to decrypt, setup was succesful. Otherwise, an error has occured. Re-insert yubikey and try again."
+
+
 
 
 #log "Setting up ssh-agent to use gpg"
