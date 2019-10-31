@@ -58,6 +58,13 @@ fi
 
 log "Yubikey detected, contiuning setup."
 
+log "Killing gpg-agent."
+killall gpg-agent -9
+
+GNUPGHOME=`mktemp`
+log "Using $GNUPGHOME as temporary gpg directory."
+
+
 
 get_and_verify_input "GPG Master Key Passphrase" "MASTER_PASSPHRASE"
 get_and_verify_input "GPG Subkey Key Passphrase" "SUBKEY_PASSPHRASE"
