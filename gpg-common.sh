@@ -88,6 +88,11 @@ log "Killing gpg-agent."
 killall gpg-agent -9
 
 
+if ls -la ~/.gnupg; then
+	log "Existing ~/.gnupg directory found. Moving directory ~/.gnupg.$EPOCH_TIME to create fresh keychain."
+	mv ~/.gnupg ~/.gnupg.$EPOCH_TIME
+fi
+
 get_and_verify_input_hidden "GPG Master Key Passphrase" "MASTER_PASSPHRASE"
 get_and_verify_input_hidden "GPG Subkey Key Passphrase" "SUBKEY_PASSPHRASE"
 get_and_verify_input_hidden "GPG Admin Pin"             "GPG_ADMIN_PIN"
