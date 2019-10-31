@@ -40,10 +40,11 @@ sleep 2
 log "Testing encryption and decryption"
 log "Generating encrypted message to yourself..."
 log "Hello world!" | gpg -a --encrypt --recipient "$EMAIL" > /tmp/message.enc
-log "Decrypting message. After typing GPG User Pin, the yubikey should require a physical touch to complete decryption."
 gpg --decrypt /tmp/message.enc
 
+log "READ ME! Message attempt to be decrypted. If you weren't asked for a pin, setup has vail along the process. If you were asked for pin and message decrypted successfully, setup is complete."
 
-log "Setting up ssh-agent to use gpg"
-killall ssh-agent
-gpg-connect-agent updatestartuptty /bye
+
+#log "Setting up ssh-agent to use gpg"
+#killall ssh-agent
+#gpg-connect-agent updatestartuptty /bye
