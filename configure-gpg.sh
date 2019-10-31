@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-source gpg-common.sh
+source support/gpg-common.sh
 
 log "Generating RSA 4096 master key."
 MASTER_KEY_GEN_OUTPUT=$(generate_master_key)
