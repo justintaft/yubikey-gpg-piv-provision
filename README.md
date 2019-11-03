@@ -34,6 +34,15 @@ bash configure-gpg.sh
 ~~~
 
 
+To use YUBIKEY keys outside of box, disconnect yubikey from VM, remove and re-insert yuibkey, and run the following command:
+
+~~~
+gpg2 --import output/gpg*/public_keys
+~~~
+
+
+*WARNING: DO NOT use GPG's key to card functionality on any keys under the output directory. GPG modifies private key files and leaves the stubs behind, rendering the backed up private key useless.*
+
 
 ## Provision PIV
 
