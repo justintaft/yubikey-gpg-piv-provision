@@ -33,8 +33,7 @@ cd /vagrant
 bash configure-gpg.sh
 ~~~
 
-
-To use YUBIKEY keys outside of box, disconnect yubikey from VM, remove and re-insert yuibkey, and run the following command:
+To use YUBIKEY key outside of VM, remove yubikey USB association with VM, remove and re-insert yuibkey from USB port, and run the following command:
 
 ~~~
 gpg2 --import output/gpg*/public_keys
