@@ -2,7 +2,7 @@
 
 Easily provision a new yubikey for PIV and GPG use.
 
-*WARNING! USE PROJECT AT YOUR OWN RISK! Running the VM will reset the inserted Yubikey's GPG application, including pins, public keys, and private keys sotred on the YUBIKEY.*
+*WARNING! USE PROJECT AT YOUR OWN RISK! Running the VM will reset the inserted Yubikey's GPG and PIV application, including pins, public keys, and private keys stored on the YUBIKEY.*
 
 
 
