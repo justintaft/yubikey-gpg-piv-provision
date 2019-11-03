@@ -12,7 +12,7 @@ Easily provision a new yubikey for PIV and GPG use.
 - Entropy needs to be injected through the system for secure seed generation.
 - Revocation certificate is not exported for gpg
 - PIV keys are NOT encrypted on export
-- Method not provided to restore keys
+- Method not provided to restore PIV keys
 
 ## Provision GPG
 
@@ -43,6 +43,17 @@ gpg2 --import output/gpg*/public_keys
 
 *WARNING: DO NOT use GPG's key to card functionality on any keys under the output directory. GPG modifies private key files and leaves the stubs behind, rendering the backed up private key useless.*
 
+
+## Restore GPG key to yubikey created by `configure-gpg.sh`
+
+To copy a backed up key exported by gpg, run the following command. Replace "gpg0.1234" with the directory containing the exported key.
+
+~~~
+vagrant up
+vagrant ssh
+cd /vagrant
+bash restore-gpg.sh output/gpg.01234
+~~~
 
 ## Provision PIV
 

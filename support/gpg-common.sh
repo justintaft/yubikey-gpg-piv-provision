@@ -2,17 +2,10 @@
 
 
 EPOCH_TIME=`date +%s`
-KEY_OUTPUT_DIR="/vagrant/output/gpg.$EPOCH_TIME"
-mkdir -p $KEY_OUTPUT_DIR
 
 function log() {
 	echo "--- $1";
 }
-
-#Install deps
-log "Installing deps"
-sudo apt update -y
-sudo apt install scdaemon gnupg2 pcscd pcsc-tools yubikey-manager -y
 
 
 # Asks user for input. 
@@ -67,38 +60,6 @@ function get_and_verify_input() {
 }
 
 
-
-
-YUBILINES=`lsusb | grep -i yubico`
-FOUNDYUBI=$?
-
-if [[ "$FOUNDYUBI" -ne 0 ]]; then
-   log "Yubikey not found. Ensure yubikey is connected to host. If using vagrant, forward usb device to VM, unplug and re-insert yubikey, then try again."
-   exit;
-fi
-
-YUBICOKEYCOUNT=`echo "$YUBILINES" | wc -l`
-if [[ $YUBICOKEYCOUNT -ne 1 ]]; then
-  log "Multiple yubikeys are connected to host. Only one yubikey can be configured at a time. Disconnect all but one yubikey and try again."
-fi
-
-log "Yubikey detected, contiuning setup."
-
-log "Killing gpg-agent."
-killall gpg-agent -9
-
-
-if ls -la ~/.gnupg; then
-	log "Existing ~/.gnupg directory found. Moving directory ~/.gnupg.$EPOCH_TIME to create fresh keychain."
-	mv ~/.gnupg ~/.gnupg.$EPOCH_TIME
-fi
-
-get_and_verify_input_hidden "GPG Master Key Passphrase" "MASTER_PASSPHRASE"
-get_and_verify_input_hidden "GPG Subkey Key Passphrase" "SUBKEY_PASSPHRASE"
-get_and_verify_input_hidden "GPG Admin Pin"             "GPG_ADMIN_PIN"
-get_and_verify_input_hidden "GPG User Pin" "GPG_USER_PIN"
-get_and_verify_input "Real Name" "REAL_NAME"
-get_and_verify_input "Email Address" "EMAIL"
 
 
 # Moves key to card
@@ -189,6 +150,7 @@ PCSC_SCAN=''
 
 
 function generate_master_key() {
+
 OUTPUT=`gpg --batch --passphrase-fd 0 --command-fd=0 --pinentry-mode loopback --gen-key 2>&1  << EOF
 %echo Gen key
 Key-Type: RSA
@@ -255,13 +217,69 @@ function set_key_prefs()
 }
 
 
-log "Resetting opengpg user and admin pin. No reset code will be set."
-reset_opengp_yubikey 
-sleep 2
 
-log "Setting user pin"
-change_user_pin 
-sleep 2
 
-log "Setting admin pin"
-change_admin_pin 
+function ask_for_gpg_key_passwords() {
+	get_and_verify_input_hidden "GPG Master Key Passphrase" "MASTER_PASSPHRASE"
+	get_and_verify_input_hidden "GPG Subkey Key Passphrase" "SUBKEY_PASSPHRASE"
+
+}
+
+function ask_for_gpg_key_person_info() {
+	get_and_verify_input "Real Name" "REAL_NAME"
+	get_and_verify_input "Email Address" "EMAIL"
+}
+
+function init_config() {
+
+
+	#Install deps
+	log "Installing deps"
+	sudo apt update -y
+	sudo apt install scdaemon gnupg2 pcscd pcsc-tools yubikey-manager -y
+
+
+
+	YUBILINES=`lsusb | grep -i yubico`
+	FOUNDYUBI=$?
+
+	if [[ "$FOUNDYUBI" -ne 0 ]]; then
+		log "Yubikey not found. Ensure yubikey is connected to host. If using vagrant, forward usb device to VM, unplug and re-insert yubikey, then try again."
+		exit;
+	fi
+
+	YUBICOKEYCOUNT=`echo "$YUBILINES" | wc -l`
+	if [[ $YUBICOKEYCOUNT -ne 1 ]]; then
+		log "Multiple yubikeys are connected to host. Only one yubikey can be configured at a time. Disconnect all but one yubikey and try again."
+	fi
+
+	log "Yubikey detected, contiuning setup."
+
+	log "Killing gpg-agent."
+	sudo killall gpg-agent -9
+
+	if ls -la ~/.gnupg > /dev/null 2>&1; then
+		log "Existing ~/.gnupg directory found. Moving directory ~/.gnupg.$EPOCH_TIME to create fresh keychain."
+		mv ~/.gnupg ~/.gnupg.$EPOCH_TIME
+	fi
+
+
+
+
+}
+
+function init_yubikey_setup() {
+
+	get_and_verify_input_hidden "GPG Admin Pin" "GPG_ADMIN_PIN"
+	get_and_verify_input_hidden "GPG User Pin" "GPG_USER_PIN"
+        log "Resetting opengpg user and admin pin. No reset code will be set."
+        reset_opengp_yubikey 
+        sleep 2
+        
+        log "Setting user pin"
+        change_user_pin 
+        sleep 2
+        
+        log "Setting admin pin"
+        change_admin_pin 
+}

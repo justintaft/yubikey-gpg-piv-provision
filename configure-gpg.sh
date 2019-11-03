@@ -2,12 +2,29 @@
 
 source support/gpg-common.sh
 
+init_config
+ask_for_gpg_key_passwords
+ask_for_gpg_key_person_info
+
+
+#Temporary directory
+KEY_OUTPUT_DIR="/tmp/gpg.$EPOCH_TIME"
+
+#Final directory key will be moved to if import was successful."
+FINAL_KEY_OUTPUT_DIR="/vagrant/output/gpg.$EPOCH_TIME"
+
+mkdir -p $KEY_OUTPUT_DIR
+
+
+
 log "Generating RSA 4096 master key."
+
 MASTER_KEY_GEN_OUTPUT=$(generate_master_key)
 KEY_ID=$(echo -e "$MASTER_KEY_GEN_OUTPUT" | grep "marked as" | sed 's/ marked as .*$//g' | sed 's/gpg: key //g')
 
+
 log "Generating RSA 4096 sign sub key."
-generate_RSA_4096_sign_sub_key 2> /dev/null
+generate_RSA_4096_sign_sub_key 2>/dev/null
 
 log "Generating RSA 4096 encryption sub key."
 generate_RSA_4096_encryption_sub_key  2> /dev/null
@@ -27,44 +44,12 @@ echo "$MASTER_PASSPHRASE" | gpg -a --batch --passphrase-fd 0 --export-secret-key
 log "Exporting private subkeys."
 echo "$MASTER_PASSPHRASE" | gpg -a --batch --passphrase-fd 0 --export-secret-subkeys --pinentry-mode loopback > "$KEY_OUTPUT_DIR/all_sub_keys"
 
-log "Moving Subkey to YUBIKEY"
-key_to_card "1" "1"
-key_to_card "2" "2"
-key_to_card "3" "3"
-
-
-log "Setting touch policy to be required for encryption signature and authentication operations"
-enable_touch_policy_for_all_actions
-sleep 2
-
-log "Testing encryption and decryption"
-log "Generating encrypted message to yourself..."
-echo "Hello world!" | gpg -a --encrypt --recipient "$EMAIL" > /tmp/message.enc
-
-
-log "Yubikey should be flashing. Touch yubikey to finish decrypting message."
-
-DECRYPTEDMSG=`gpg --decrypt /tmp/message.enc`
-
-if [[ $? -ne 0 ]]; then
-	log "Failed to decrypt test message. Setup is not successful."
-	exit
+if  bash ./restore-gpg.sh "$KEY_OUTPUT_DIR"; then 
+    mv "$KEY_OUTPUT_DIR" "$FINAL_KEY_OUTPUT_DIR"
+    log "Exported keys have been stored in $FINAL_KEY_OUTPUT_DIR"
 fi
 
-if echo "DECRYPTEDMSG" | grep "Hello world!"; then
-	log "Failed to decrypt test message. Setup is not successful."
-	exit
-fi
 
-log "Decrypted message successfully."
-
-log "Exported keys have been stored in $KEY_OUTPUT_DIR" 
-
-log "IMPORTANT! If you were asked for a PIN (not a passphrase), and had to touch the yuibkey to decrypt, setup was succesful. Otherwise, an error has occured. Re-insert yubikey and try again."
+	
 
 
-
-
-#log "Setting up ssh-agent to use gpg"
-#killall ssh-agent
-#gpg-connect-agent updatestartuptty /bye
