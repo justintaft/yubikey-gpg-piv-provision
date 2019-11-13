@@ -9,7 +9,7 @@ Easily provision a new yubikey for PIV and GPG use.
 ## Known issues
 
 - Provsining in a VM is not as secure as a live-distro, which does not have disk access.
-- Entropy needs to be injected through the system for secure seed generation.
+- Entropy needs to be injected into the VM for secure seed generation.
 - Revocation certificate is not exported for gpg
 - PIV keys are NOT encrypted on export
 - Method not provided to restore PIV keys
